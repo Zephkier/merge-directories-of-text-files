@@ -125,7 +125,7 @@ function processOutput_pdf(directory) {
                 if (invalidFiletypes.includes(ext)) return;
 
                 // Read file contents
-                let fileContents = fs.readFileSync(inputFilePath, "utf8");
+                let fileContents = fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n");
 
                 // Write content
                 doc
