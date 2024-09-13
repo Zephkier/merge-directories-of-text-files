@@ -2,7 +2,7 @@
 
 1.  Place your files (and even your folders of files) into `input` folder.
 
-    ![image-2](https://github.com/user-attachments/assets/2d729b0e-3adb-4e46-8ec7-85bf50ff403b)
+    ![image](https://github.com/user-attachments/assets/a3db5eec-68fd-4cd7-a31c-fd75fc69de1b)
 
 2.  Open terminal to this program's directory.
 
@@ -17,3 +17,5 @@
 5.  _???_
 
 6.  Profit! _(in `output` folder)_
+
+    ![image](https://github.com/user-attachments/assets/6f015769-8399-4f30-b8ec-cc3e37f14942)
