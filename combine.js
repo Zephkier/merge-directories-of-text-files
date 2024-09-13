@@ -16,6 +16,7 @@ let outputFilename = "merged"; // This is set later
 let outputFilenamePath; // This is set later
 
 let invalidFiletypes = [".jpg", ".jpeg", ".png", ".svg", ".psd", ".gif", ".mp4", ".avi"];
+let firstPage = true;
 
 // Setup prompt for user input
 let rl = readline.createInterface({
@@ -103,19 +104,20 @@ function processOutput_pdf(directory) {
     // Pipe the PDF document to a writable stream
     doc.pipe(fs.createWriteStream(outputFilenamePath));
 
-    // Write introduction page
+    // Write introduction page (with new line break)
     doc
         // Format
         .fontSize(11)
         .font("Helvetica")
-        .text('CTRL + F for "----- ----- " to find the start of each file.');
+        .text('CTRL + F for "----- ----- " to find the start of each file.')
+        .moveDown();
 
     // Helper function for recursive depth-first search processing
     function processPDF(directory) {
         let objects = fs.readdirSync(directory, { withFileTypes: true });
 
         // Process all files in current directory first
-        objects.forEach((object, index) => {
+        objects.forEach((object) => {
             let inputFilePath = path.join(directory, object.name);
             let relativePath = path.relative(inputDirectory, inputFilePath);
 
@@ -127,10 +129,13 @@ function processOutput_pdf(directory) {
                 // Read file contents
                 let fileContents = fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n");
 
+                // Ensure no page break for first file
+                if (firstPage) firstPage = false;
+                else doc.addPage();
+
                 // Write content
                 doc
                     // Format
-                    .addPage()
                     .fontSize(11)
                     .font("Helvetica-Bold")
                     .text(`----- ----- ${relativePath} ----- -----`)
