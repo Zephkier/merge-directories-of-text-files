@@ -84,7 +84,13 @@ function processOutput_txt(directory) {
             let ext = path.extname(inputFilePath).toLowerCase();
             if (invalidFiletypes.includes(ext)) return;
 
-            // Write file's contents into output file
+            // Write introduction page (with new line break)
+            if (firstPage) {
+                firstPage = false;
+                fs.appendFileSync(outputFilenamePath, 'CTRL + F for "----- ----- " to find the start of each file.\n\n');
+            }
+
+            // Write content
             fs.appendFileSync(outputFilenamePath, `----- ----- ${relativePath} ----- -----\n`);
             fs.appendFileSync(outputFilenamePath, fs.readFileSync(inputFilePath, "utf8") + "\n");
         }
@@ -157,5 +163,6 @@ function processOutput_pdf(directory) {
     // Finalise PDF file
     doc.end();
 }
+
 // Start the prompt for file format
 promptAndProcess();
