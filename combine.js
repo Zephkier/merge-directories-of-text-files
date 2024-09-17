@@ -103,6 +103,45 @@ function processOutput_txt(directory) {
     });
 }
 
+// Helper function for recursive depth-first search processing
+function processPDF(directory, doc) {
+    let objects = fs.readdirSync(directory, { withFileTypes: true });
+
+    // Process all files in current directory first
+    objects.forEach((object) => {
+        let inputFilePath = path.join(directory, object.name);
+        let relativePath = path.relative(inputDirectory, inputFilePath);
+
+        if (object.isFile()) {
+            // Ignore invalid filetypes
+            let ext = path.extname(inputFilePath).toLowerCase();
+            if (invalidFiletypes.includes(ext)) return;
+
+            // Read file contents
+            let fileContents = fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n");
+
+            // Ensure no page break for first file
+            if (firstPage) firstPage = false;
+            else doc.addPage();
+
+            // Write content
+            doc
+                // Format
+                .fontSize(11)
+                .font("Helvetica-Bold")
+                .text(`----- ----- .\\${relativePath} ----- -----`)
+                .font("Courier")
+                .fontSize(9)
+                .text(fileContents);
+        }
+    });
+
+    // Then process its sub-directories (recursive depth-first search)
+    objects.forEach((object) => {
+        if (object.isDirectory()) processPDF(path.join(directory, object.name), doc);
+    });
+}
+
 // Process output as .pdf file
 function processOutput_pdf(directory) {
     let doc = new PDFDocument();
@@ -118,47 +157,8 @@ function processOutput_pdf(directory) {
         .text('CTRL + F for "----- ----- " to find the start of each file.')
         .moveDown();
 
-    // Helper function for recursive depth-first search processing
-    function processPDF(directory) {
-        let objects = fs.readdirSync(directory, { withFileTypes: true });
-
-        // Process all files in current directory first
-        objects.forEach((object) => {
-            let inputFilePath = path.join(directory, object.name);
-            let relativePath = path.relative(inputDirectory, inputFilePath);
-
-            if (object.isFile()) {
-                // Ignore invalid filetypes
-                let ext = path.extname(inputFilePath).toLowerCase();
-                if (invalidFiletypes.includes(ext)) return;
-
-                // Read file contents
-                let fileContents = fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n");
-
-                // Ensure no page break for first file
-                if (firstPage) firstPage = false;
-                else doc.addPage();
-
-                // Write content
-                doc
-                    // Format
-                    .fontSize(11)
-                    .font("Helvetica-Bold")
-                    .text(`----- ----- .\\${relativePath} ----- -----`)
-                    .font("Courier")
-                    .fontSize(9)
-                    .text(fileContents);
-            }
-        });
-
-        // Then process its sub-directories (recursive depth-first search)
-        objects.forEach((object) => {
-            if (object.isDirectory()) processPDF(path.join(directory, object.name));
-        });
-    }
-
     // Call helper function
-    processPDF(directory);
+    processPDF(directory, doc);
 
     // Finalise PDF file
     doc.end();
