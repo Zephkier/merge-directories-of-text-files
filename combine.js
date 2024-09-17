@@ -91,7 +91,7 @@ function processOutput_txt(directory) {
             }
 
             // Write content
-            fs.appendFileSync(outputFilenamePath, `----- ----- ${relativePath} ----- -----\n`);
+            fs.appendFileSync(outputFilenamePath, `----- ----- .\\${relativePath} ----- -----\n`);
             fs.appendFileSync(outputFilenamePath, fs.readFileSync(inputFilePath, "utf8") + "\n");
         }
     });
@@ -144,7 +144,7 @@ function processOutput_pdf(directory) {
                     // Format
                     .fontSize(11)
                     .font("Helvetica-Bold")
-                    .text(`----- ----- ${relativePath} ----- -----`)
+                    .text(`----- ----- .\\${relativePath} ----- -----`)
                     .font("Courier")
                     .fontSize(9)
                     .text(fileContents);
