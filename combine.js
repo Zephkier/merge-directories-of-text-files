@@ -9,160 +9,161 @@ let path = require("path");
 let readline = require("readline");
 let PDFDocument = require("pdfkit");
 
-let inputDirectory = path.join(__dirname, "input");
+let inputDirectoryPath = path.join(__dirname, "input");
 let outputDirectoryPath = path.join(__dirname, "output");
 
-let outputFilename = "merged"; // This is set later
-let outputFilenamePath; // This is set later
+let outputFilenamePath;
+let outputFilename = "merged";
 
 let invalidFiletypes = [".jpg", ".jpeg", ".png", ".svg", ".psd", ".gif", ".mp4", ".avi"];
 let firstPage = true;
 
-// Setup prompt for user input
 let rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
 
-// Prompt for user input and process output file
-function promptAndProcess() {
-    // Ensure input directory exists
-    if (!fs.existsSync(inputDirectory)) {
+/**
+ * Ensure there is an 'input' folder and that it has files in it.
+ */
+function ensureInputDirectory() {
+    if (!fs.existsSync(inputDirectoryPath)) {
         console.log(red + "Error. No 'input' folder found.");
         console.log(yellow + "Creating 'input' folder...");
         console.log(yellow + "Ensure to put your files in that folder." + reset);
-        fs.mkdirSync(inputDirectory);
+        fs.mkdirSync(inputDirectoryPath);
         process.exit(1);
     }
 
-    // Ensure input directory has files inside
-    if (fs.readdirSync(inputDirectory).length == 0) {
+    if (fs.readdirSync(inputDirectoryPath).length == 0) {
         console.log(red + "Error. No files found in 'input' folder." + reset);
         process.exit(1);
     }
+}
 
+/**
+ * Prompt user for desired output filetype, and then process it accordingly.
+ */
+function promptAndProcess_outputFile() {
     rl.question(cyan + "Enter output filetype ('txt' or 'pdf'): " + reset, (userInput) => {
         let outputFiletype = userInput.toLowerCase();
         if (outputFiletype != "txt" && outputFiletype != "pdf") {
+            // Keep prompting until user enters valid filetype
             console.log(red + "Invalid filetype. Enter 'txt' or 'pdf' only.\n" + reset);
-            promptAndProcess();
+            promptAndProcess_outputFile();
         } else {
-            outputFilenamePath = path.join(outputDirectoryPath, `${outputFilename}.${outputFiletype}`);
-
-            // Ensure output directory exists
+            // Ensure there is an 'output' folder
             if (!fs.existsSync(outputDirectoryPath)) {
                 console.log(cyan + "You do not have an 'output' folder.\nCreating 'output' folder..." + reset);
                 fs.mkdirSync(outputDirectoryPath);
             }
 
-            // If there is existing output file, then delete it
+            // If output file already exists, then delete it
+            outputFilenamePath = path.join(outputDirectoryPath, `${outputFilename}.${outputFiletype}`);
             if (fs.existsSync(outputFilenamePath)) fs.unlinkSync(outputFilenamePath);
 
-            if (outputFiletype == "txt") processOutput_txt(inputDirectory);
-            else if (outputFiletype == "pdf") processOutput_pdf(inputDirectory);
+            // Process output file
+            if (outputFiletype == "txt") processOutputFile_txt(inputDirectoryPath);
+            else if (outputFiletype == "pdf") processOutputFile_pdf(inputDirectoryPath);
 
+            // Notify user of success
             console.log(green + "Success!");
-            console.log(green + "Your merged file is saved in 'output' folder." + reset);
+            console.log(green + `'${outputFilename}.${outputFiletype}' has been created in 'output' folder.` + reset);
             rl.close();
         }
     });
 }
 
-// Process output as .txt file
-function processOutput_txt(directory) {
-    // Read current directory
+/**
+ * Process TXT filetype.
+ */
+function processOutputFile_txt(directory) {
     let objects = fs.readdirSync(directory, { withFileTypes: true });
 
-    // Process all files in current directory first
+    // 1. Process all files in current directory
     objects.forEach((object) => {
         let inputFilePath = path.join(directory, object.name);
-        let relativePath = path.relative(inputDirectory, inputFilePath);
+        let relativeFilePath = path.relative(inputDirectoryPath, inputFilePath);
 
-        // Process files
         if (object.isFile()) {
-            // Ignore invalid filetypes
+            // If processing file with any one of the invalid filetypes, then skip it
             let ext = path.extname(inputFilePath).toLowerCase();
             if (invalidFiletypes.includes(ext)) return;
 
-            // Write introduction page (with new line break)
+            // Add instructions on first page with line breaks
             if (firstPage) {
                 firstPage = false;
                 fs.appendFileSync(outputFilenamePath, 'CTRL + F for "----- ----- " to find the start of each file.\n\n');
             }
 
-            // Write content
-            fs.appendFileSync(outputFilenamePath, `----- ----- .\\${relativePath} ----- -----\n`);
+            // Add file name and then its contents
+            fs.appendFileSync(outputFilenamePath, `----- ----- .\\${relativeFilePath} ----- -----\n`);
             fs.appendFileSync(outputFilenamePath, fs.readFileSync(inputFilePath, "utf8") + "\n");
         }
     });
 
-    // Then process its sub-directories (recursive depth-first search)
+    // 2. Then enter its sub-directories
     objects.forEach((object) => {
         let inputFilePath = path.join(directory, object.name);
-        if (object.isDirectory()) processOutput_txt(inputFilePath);
+        if (object.isDirectory()) processOutputFile_txt(inputFilePath);
     });
 }
 
-// Helper function for recursive depth-first search processing
-function processPDF(directory, doc) {
-    let objects = fs.readdirSync(directory, { withFileTypes: true });
-
-    // Process all files in current directory first
-    objects.forEach((object) => {
-        let inputFilePath = path.join(directory, object.name);
-        let relativePath = path.relative(inputDirectory, inputFilePath);
-
-        if (object.isFile()) {
-            // Ignore invalid filetypes
-            let ext = path.extname(inputFilePath).toLowerCase();
-            if (invalidFiletypes.includes(ext)) return;
-
-            // Read file contents
-            let fileContents = fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n");
-
-            // Ensure no page break for first file
-            if (firstPage) firstPage = false;
-            else doc.addPage();
-
-            // Write content
-            doc
-                // Format
-                .fontSize(11)
-                .font("Helvetica-Bold")
-                .text(`----- ----- .\\${relativePath} ----- -----`)
-                .font("Courier")
-                .fontSize(9)
-                .text(fileContents);
-        }
-    });
-
-    // Then process its sub-directories (recursive depth-first search)
-    objects.forEach((object) => {
-        if (object.isDirectory()) processPDF(path.join(directory, object.name), doc);
-    });
-}
-
-// Process output as .pdf file
-function processOutput_pdf(directory) {
+/**
+ * Process PDF filetype.
+ */
+function processOutputFile_pdf(directory) {
     let doc = new PDFDocument();
 
-    // Pipe the PDF document to a writable stream
     doc.pipe(fs.createWriteStream(outputFilenamePath));
-
-    // Write introduction page (with new line break)
     doc
-        // Format
+        // Add instructions on first page
         .fontSize(11)
         .font("Helvetica")
         .text('CTRL + F for "----- ----- " to find the start of each file.')
         .moveDown();
 
-    // Call helper function
     processPDF(directory, doc);
 
-    // Finalise PDF file
     doc.end();
 }
 
-// Start the prompt for file format
-promptAndProcess();
+/**
+ * Helper function for processOutputFile_pdf().
+ */
+function processPDF(directory, doc) {
+    let objects = fs.readdirSync(directory, { withFileTypes: true });
+
+    // 1. Process all files in current directory
+    objects.forEach((object) => {
+        let inputFilePath = path.join(directory, object.name);
+        let relativePath = path.relative(inputDirectoryPath, inputFilePath);
+
+        if (object.isFile()) {
+            // If processing file with any one of the invalid filetypes, then skip it
+            let ext = path.extname(inputFilePath).toLowerCase();
+            if (invalidFiletypes.includes(ext)) return;
+
+            // Add page break on second page onwards
+            if (firstPage) firstPage = false;
+            else doc.addPage();
+
+            doc
+                // Add file name and then its contents
+                .fontSize(11)
+                .font("Helvetica-Bold")
+                .text(`----- ----- .\\${relativePath} ----- -----`)
+                .font("Courier")
+                .fontSize(9)
+                .text(fs.readFileSync(inputFilePath, "utf8").replace(/\r\n/g, "\n"));
+        }
+    });
+
+    // 2. Then enter its sub-directories
+    objects.forEach((object) => {
+        if (object.isDirectory()) processPDF(path.join(directory, object.name), doc);
+    });
+}
+
+ensureInputDirectory();
+promptAndProcess_outputFile();
